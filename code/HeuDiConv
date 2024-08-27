@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+
+# Organizing data into the BIDS using HeuDiConv
+
+# Step1: generate heuristic file for one subject
+docker run --rm -it \
+    -v /mnt/data/project:/base \
+    nipy/heudiconv:1.1.6 \
+    -d /base/Dicom/sub-{subject}/*/* \
+    -o /base/BIDS/ \
+    -f convertall \
+    -s 001 \
+    -c none \
+    --overwrite
+
+# Step2: run with edited heuristic file for one subject
+docker run --rm -it \
+    -v /mnt/data/project:/base \
+    nipy/heudiconv:1.1.6 \
+    -d /base/Dicom/sub-{subject}/*/* \
+    -o /base/BIDS/ \
+    -f /base/code/heuristic.py \
+    -s 001 \
+    -c dcm2niix -b \
+    --overwrite
+
+# Step3: loop all subject
+for sub in $(seq -w 002 077)
+do
+    docker run --rm -it \
+        -v /mnt/data/project:/base \
+        nipy/heudiconv:1.1.6 \
+        -d /base/Dicom/sub-{subject}/*/* \
+        -o /base/BIDS/ \
+        -f /base/code/heuristic.py \
+        -s $sub \
+        -c dcm2niix -b \
+        --overwrite
+done
+

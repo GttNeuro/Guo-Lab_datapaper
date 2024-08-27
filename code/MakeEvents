@@ -1,0 +1,57 @@
+#!/usr/bin/env python
+
+# Script for making events files for use in FEAT
+
+# Adapted from code available in the GitHub repository associated with the srndna-datapaper study (https://github.com/DVS-Lab/srndna-datapaper)
+
+import os
+import pandas as pd
+import re
+
+task='CognitiveControl'
+#task='LanguageControl'
+
+bidsdir='/mnt/data/project/BIDS'
+allfiles = [os.path.join(root,f) for root,dirs,files in os.walk(bidsdir) for f in files if 
+            (('task-%s'%(task) in f))&(f.endswith('events.tsv'))]
+
+for f in allfiles:
+
+    try:
+        sub=re.search('/func/sub-(.*)_task',f).group(1)
+    except AttributeError:
+        print("can't find 'sub-' in file: ",f)
+
+    try:
+        run=re.search('run-(.*)_events',f).group(1)
+    except AttributeError:
+        print("can't find run", f)
+
+    OutDir='/mnt/data/project/derivatives/fsl/EVfiles/sub-%s/SingleTrialEVs/task-%s/run%s'%(sub,task,run)
+    os.makedirs(OutDir,exist_ok=True)
+
+    df=pd.read_csv(f,sep='\t')
+    df['mod']=1
+
+    stimuli_phase=df[df['trial_type'].str.contains('S|NS')]
+    stimuli_phase=stimuli_phase[['onset','duration','mod']]
+    stimuli_phase.to_csv(OutDir+'/trialmodel-stimuliphase_.tsv',
+                     sep="\t",header=False,index=False)
+
+    df['mod']=1
+    df=df.drop_duplicates(subset=['onset','duration'],keep='last').reset_index(drop=True)
+    df['trial']=df.index+1
+    for trial in df['trial']:
+        Single=df[df['trial']==trial]
+        Other=df[df['trial']!=trial]
+        
+        Single=Single[['onset','duration','mod']]
+        Other=Other[['onset','duration','mod']]
+
+        Single.to_csv(OutDir+'/trialmodel-%02d_estimage-single.tsv'%(trial),
+                      sep="\t",header=False,index=False)
+        Other.to_csv(OutDir+'/trialmodel-%02d_estimage-other.tsv'%(trial),
+                     sep="\t",header=False,index=False)
+       
+
+        

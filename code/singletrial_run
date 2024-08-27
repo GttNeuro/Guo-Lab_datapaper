@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+
+# Script for running singletrial.py in batch
+
+
+scriptdir="/mnt/data/project/code"
+maindir="/mnt/data/project"
+
+logs="/mnt/data/project/derivatives/fsl/logs"
+logfile=${logs}/runLSS_date-`date +"%FT%H%M"`.log
+
+for sub in $(seq -w 001 077); do 
+    nruns=2
+    ntrials=80
+    for run in $(seq $nruns); do
+        for trial in $(seq -f "%02g" 1 $ntrials); do 
+            SCRIPTNAME=${scriptdir}/singletrial
+            NCORES=8
+            while [ $(ps -ef | grep -v grep | grep $SCRIPTNAME | wc -l) -ge $NCORES ]; do
+                sleep 1s
+            done
+            bash $SCRIPTNAME $sub $run $trial $logfile &
+        done
+    done
+
+done
+

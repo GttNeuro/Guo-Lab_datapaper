@@ -1,0 +1,60 @@
+#!/usr/bin/env python
+
+# Script for computing the whole-brain tSNR
+
+# Adapted from code available in the GitHub repository associated with the srndna-datapaper study (https://github.com/DVS-Lab/srndna-datapaper)
+
+import os
+import re
+import pandas as pd
+import nilearn as nl
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+from nilearn.input_data import NiftiMasker
+from nilearn.image.image import mean_img
+from nilearn import plotting, image
+from nilearn.plotting import view_img
+
+import warnings
+warnings.filterwarnings("ignore")
+from nilearn.image import math_img
+import time
+import multiprocessing
+
+# Acquire the file list
+f_list = [os.path.join(root, f) for root, dirs, files in os.walk('/mnt/data/project/derivatives/fmriprep/') for f in files if f.endswith('space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz')]
+
+print(f_list)
+
+# Create mask
+from nilearn import image, datasets, masking, plotting, input_data
+
+
+# Calculate and save tSNR images
+from nilearn.image import math_img
+import nibabel as nib
+
+img_data = []
+for task in ['CognitiveControl', 'LanguageControl']:
+    img_list = [img for img in f_list if task in img]
+    
+    for img in img_list:
+        sub = re.search('func/sub-(.*?)_task', img).group(1)
+        task = re.search('_task-(.*)_run', img).group(1)
+        run = re.search('_run-(.*)_space',img).group(1)
+        print('sub: %s task: %s run: %s'%(sub,task,run))
+        mask = '/mnt/data/project/derivatives/fmriprep/sub-%s/func/sub-%s_task-%s_run-%s_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz' % (sub, sub, task, run)
+        plotting.plot_roi(mask, title="fmriprep Mask", draw_cross=False)
+        nifti_masker = NiftiMasker(mask_img=mask)
+        x = nifti_masker.fit_transform(img)
+        img = nifti_masker.inverse_transform(x)
+        
+        tsnr_img = image.math_img('img.mean(axis=3) / img.std(axis=3)', img=img)
+        nib.save(tsnr_img, '/mnt/data/project/derivatives/tsnr/sub-%s_task-%s_run-%s_tsnr.nii.gz' % (sub, task, run))
+        img_data.append([tsnr_img, task, run, sub])
+
+
+
+
+

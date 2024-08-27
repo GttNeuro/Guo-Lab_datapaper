@@ -1,0 +1,92 @@
+#!/usr/bin/env python
+
+# Script for ploting the box diagram of the tSNR.
+
+import os
+import re
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+import matplotlib.font_manager as fm
+import nibabel as nib
+
+
+img_list = [os.path.join(root, f) for root, dirs, files in os.walk('/mnt/data/project/derivatives/tsnr/') for f in files if f.endswith('_tsnr.nii.gz')]
+
+img_list.sort(key=lambda x: (os.path.basename(x)))
+
+
+print("Image files found:", img_list)
+
+
+plot_data = pd.DataFrame(columns=['Voxel Value', 'Task', 'Subject'])
+
+
+subjects = []
+
+for img in img_list:
+    try:
+        sub = re.search('sub-(.*?)_task', img).group(1)
+        task = re.search('_task-(.*?)_', img).group(1)
+        tsnr = img  
+        
+
+        if os.path.exists(tsnr):
+            print(f"Processing {tsnr} for Subject {sub} and Task {task}")
+            img_data = nib.load(tsnr)
+            voxel_data = img_data.get_fdata().flatten()
+            subjects = [f'sub-{sub}'] * len(voxel_data)  
+            
+            temp_df = pd.DataFrame({
+                'Voxel Value': voxel_data,
+                'Task': task,
+                'Subject': subjects
+            })
+            plot_data = pd.concat([plot_data, temp_df], ignore_index=True)
+        else:
+            print(f"File {tsnr} does not exist.")
+    except Exception as e:
+        print(f"Error processing file {img}: {e}")
+
+print(plot_data.head())
+
+
+if not plot_data.empty:
+    plot_data['Task'] = pd.Categorical(plot_data['Task'], categories=['LanguageControl', 'CognitiveControl'], ordered=True)
+    plot_data = plot_data.sort_values(by=['Task', 'Subject'])
+
+    palette = {
+        'LanguageControl': '#FFB6C1',  
+        'CognitiveControl': '#7EC0EE'
+    }
+
+    plt.figure(figsize=(14, 8))
+
+    ax = sns.boxplot(data=plot_data, x='Subject', y='Voxel Value', hue='Task', palette=palette, showfliers=False)
+
+
+    prop1 = fm.FontProperties(fname='/usr/share/fonts/truetype/msttcorefonts/Times_New_Roman.ttf', size=14)
+    prop2 = fm.FontProperties(fname='/usr/share/fonts/truetype/msttcorefonts/Times_New_Roman.ttf', size=12)
+    prop3 = fm.FontProperties(fname='/usr/share/fonts/truetype/msttcorefonts/Times_New_Roman.ttf', size=16)
+
+    plt.xlabel('')
+    plt.ylabel('tSNR', fontproperties=prop3)
+    plt.xticks(rotation=90, fontproperties=prop2)
+    plt.yticks(fontproperties=prop2)
+
+    handles, labels = ax.get_legend_handles_labels()
+    new_labels = ['Language control task', 'Cognitive control task']
+    ax.legend(handles=handles, labels=new_labels, loc='upper right', prop=prop1)
+
+    plt.ylim(0, 250)
+    plt.tight_layout()
+
+    # Save image
+    output_path = '/mnt/data/project/derivatives/figure/Distribution of tSNR for each participant and task_redblue.png'
+    plt.savefig(output_path, dpi=300)
+    plt.show()
+
+else:
+    print("No data to plot.")
+

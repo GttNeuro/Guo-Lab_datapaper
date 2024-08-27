@@ -1,0 +1,96 @@
+#!/usr/bin/env python
+
+# Script for ploting the box diagram of the FD.
+
+import os
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import matplotlib.font_manager as fm
+import matplotlib as mpl
+
+
+subject_numbers = [f"{i:03d}" for i in list(range(1, 78))]
+
+base_path = '/mnt/data/project/derivatives/fmriprep'
+data_path_pattern = os.path.join(base_path, 'sub-{subject}', 'func')
+
+all_data = pd.DataFrame()
+
+for subject in subject_numbers:
+    cognitive_files = [
+        os.path.join(data_path_pattern.format(subject=subject), f'sub-{subject}_task-CognitiveControl_run-01_desc-confounds_timeseries.tsv'),
+        os.path.join(data_path_pattern.format(subject=subject), f'sub-{subject}_task-CognitiveControl_run-02_desc-confounds_timeseries.tsv')
+    ]
+    language_files = [
+        os.path.join(data_path_pattern.format(subject=subject), f'sub-{subject}_task-LanguageControl_run-01_desc-confounds_timeseries.tsv'),
+        os.path.join(data_path_pattern.format(subject=subject), f'sub-{subject}_task-LanguageControl_run-02_desc-confounds_timeseries.tsv')
+    ]
+    
+
+    if all(os.path.exists(f) for f in cognitive_files) and all(os.path.exists(f) for f in language_files):
+        cognitive_data = pd.concat(
+            [pd.read_csv(f, sep='\t', usecols=['framewise_displacement']) for f in cognitive_files],
+            ignore_index=True
+        )
+        language_data = pd.concat(
+            [pd.read_csv(f, sep='\t', usecols=['framewise_displacement']) for f in language_files],
+            ignore_index=True
+        )
+
+        cognitive_data['Task'] = 'CognitiveControl'
+        cognitive_data['Subject'] = f'sub-{subject}'
+        language_data['Task'] = 'LanguageControl'
+        language_data['Subject'] = f'sub-{subject}'
+
+        subject_data = pd.concat([cognitive_data, language_data], ignore_index=True)
+        all_data = pd.concat([all_data, subject_data], ignore_index=True)
+    else:
+        print(f"Files for subject {subject} do not exist.")
+        
+
+
+if not all_data.empty:
+    all_data['Task'] = pd.Categorical(all_data['Task'], categories=['LanguageControl', 'CognitiveControl'], ordered=True)
+    all_data = all_data.sort_values(by=['Task', 'Subject'])
+
+
+    plt.figure(figsize=(14, 8))
+
+    palette = {
+        'LanguageControl': '#FFB6C1',  
+        'CognitiveControl': '#7EC0EE'
+    }
+
+    ax = sns.boxplot(
+        data=all_data, 
+        x='Subject', 
+        y='framewise_displacement', 
+        hue='Task', 
+        palette=palette,
+        showfliers=False  
+    )
+
+    prop1 = fm.FontProperties(fname='/usr/share/fonts/truetype/msttcorefonts/Times_New_Roman.ttf', size=14)
+    prop2 = fm.FontProperties(fname='/usr/share/fonts/truetype/msttcorefonts/Times_New_Roman.ttf', size=12)
+    prop3 = fm.FontProperties(fname='/usr/share/fonts/truetype/msttcorefonts/Times_New_Roman.ttf', size=16)
+
+    plt.xlabel('')
+    plt.ylabel('Framewise Displacement (mm)', fontproperties=prop3)
+    plt.xticks(rotation=90, fontproperties=prop2)
+    plt.yticks(fontproperties=prop2)
+
+    handles, labels = ax.get_legend_handles_labels()
+    new_labels = ['Language control task', 'Cognitive control task']
+    ax.legend(handles=handles, labels=new_labels, loc='upper right', prop=prop1)
+
+    plt.ylim(0, 0.5)  
+    plt.tight_layout()
+
+    # Save image
+    output_path = '/mnt/data/project/derivatives/figure/Distribution of FD for each participant and task_redblue.png'
+    plt.savefig(output_path, dpi=300)
+    plt.show()
+else:
+    print("No data to plot.")
+

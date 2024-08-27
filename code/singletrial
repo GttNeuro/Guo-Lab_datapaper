@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+
+# Script for performing the single-trial estimation in FSL
+
+# Adapted from code available in the GitHub repository associated with the srndna-datapaper study (https://github.com/DVS-Lab/srndna-datapaper)
+
+
+maindir="/mnt/data/project"
+scriptdir="/mnt/data/project/code"
+logs="/mnt/data/project/derivatives/fsl/logs"
+
+
+TASK=CognitiveControl
+#TASK=LanguageControl
+sub=$1
+run=$2
+trial=$3
+logfile=$4
+echo "sub; ${sub} run: ${run} trial: ${trial} log: ${logfile}"
+
+
+MAINOUTPUT="/mnt/data/project/derivatives/fsl/sub-${sub}"
+mkdir -p "$MAINOUTPUT"
+DATA="/mnt/data/project/derivatives/fmriprep/sub-${sub}/func/sub-${sub}_task-${TASK}_run-0${run}_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz"
+NVOLUMES=$(fslnvols "$DATA")
+CONFOUNDEVS="/mnt/data/project/derivatives/fsl/confounds/sub-${sub}/sub-${sub}_task-${TASK}_run-0${run}_desc-fslConfounds.tsv"
+
+if [ ! -e "$CONFOUNDEVS" ]; then
+    echo "missing: $CONFOUNDEVS" >> "$logfile"
+    exit 
+fi
+
+
+EVDIR="/mnt/data/project/derivatives/fsl/EVfiles/sub-${sub}/SingleTrialEVs/task-${TASK}/run0${run}"
+SINGLETRIAL="${EVDIR}/trialmodel-${trial}_estimage-single.tsv"
+OTHERTRIAL="${EVDIR}/trialmodel-${trial}_estimage-other.tsv"
+
+
+zoutdir="${MAINOUTPUT}/LSS-images_task-${TASK}_run-0${run}"
+mkdir -p "$zoutdir"
+
+
+OUTPUT="${MAINOUTPUT}/LSS_task-${TASK}_run-0${run}_trial-${trial}"
+
+
+if [ -e "${zoutdir}/zstat_trial-${trial}.nii.gz" ]; then
+    exit 
+else
+    echo "running: $OUTPUT" >> "${logs}/re-runLSS.log"
+    rm -rf "${OUTPUT}.feat"
+fi
+
+
+ITEMPLATE="${maindir}/templates/LSS_task-${TASK}.fsf"
+OTEMPLATE="${MAINOUTPUT}/LSS_sub-${sub}_task-${TASK}_run-0${run}_trial-${trial}.fsf"
+
+sed -e "s@OUTPUT@$OUTPUT@g" \
+    -e "s@DATA@$DATA@g" \
+    -e "s@SINGLETRIAL@$SINGLETRIAL@g" \
+    -e "s@OTHERTRIAL@$OTHERTRIAL@g" \
+    -e "s@CONFOUNDEVS@$CONFOUNDEVS@g" \
+    -e "s@NVOLUMES@$NVOLUMES@g" \
+    < "$ITEMPLATE" > "$OTEMPLATE"
+
+feat "$OTEMPLATE"
+
+
+cp "${OUTPUT}.feat/stats/zstat1.nii.gz" "${zoutdir}/zstat_trial-${trial}.nii.gz"
+rm -rf "${OUTPUT}.feat"
+

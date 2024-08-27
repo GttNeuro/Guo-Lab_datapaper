@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+# Script for defacing anatomicals to ensure compatibility with data sharing
+
+
+for sub in {001..077}; do
+  bidsroot="/mnt/data/project/BIDS"
+
+  echo "Processing subject: ${sub}"
+  
+  # Defacing the anatomical image
+  pydeface ${bidsroot}/sub-${sub}/anat/sub-${sub}_T1w.nii.gz
+  
+  # Renaming the defaced image back to the original filename
+  mv -f ${bidsroot}/sub-${sub}/anat/sub-${sub}_T1w_defaced.nii.gz ${bidsroot}/sub-${sub}/anat/sub-${sub}_T1w.nii.gz
+  
+  echo "Subject ${sub} defaced and saved."
+done
+
+echo "All subjects processed."
+

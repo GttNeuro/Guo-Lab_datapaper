@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+
+# Preprocessing of anatomical and functional data
+
+# no slice-timing correction
+
+bids_root_dir=/mnt/data/project
+
+for sub in $(seq -w 001 077)
+do
+    if [ ! -d $bids_root_dir/derivatives/fmriprep/sub-${sub} ]; then
+        mkdir $bids_root_dir/derivatives/fmriprep/sub-${sub}
+    fi
+
+
+    echo ""
+    echo "Running fmriprep on participant ${sub}"
+    echo ""
+
+docker run -it --rm \
+    -v $bids_root_dir/BIDS:/data \
+    -v $bids_root_dir/derivatives/fmriprep:/out \
+    -v $bids_root_dir/code:/opts \
+    -v $bids_root_dir/derivatives/fmriprep/scratch:/scratch \
+    nipreps/fmriprep:24.0.0 \
+    /data /out \
+    participant --participant-label sub-${sub} \
+    --fs-license-file /opts/license.txt \
+    --fs-no-reconall \
+    --output-spaces MNI152NLin2009cAsym \
+    --stop-on-first-crash \
+    --write-graph \
+    --skip_bids_validation \
+    -w /scratch
+done

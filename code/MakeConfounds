@@ -1,0 +1,46 @@
+#!/usr/bin/env python
+
+# Script for extracting confound regressors for use in FEAT
+
+# Adapted from code available in the GitHub repository associated with the srndna-datapaper study (https://github.com/DVS-Lab/srndna-datapaper)
+
+import numpy as np
+import pandas as pd
+import os
+import re
+
+
+fmriprep_path = '/mnt/data/project/derivatives/fmriprep'
+
+# Make list of confound tsvs
+cons = []
+for root, dirs, files in os.walk(fmriprep_path):
+    for f in files:
+        if f.endswith('-confounds_timeseries.tsv'):
+            cons.append(os.path.join(root, f))
+
+# Loop through files
+for f in cons:
+    sub = re.search('/func/(.*)_task', f).group(1)
+    run = re.search('_run-(.*)_desc', f).group(1)
+    task = re.search('_task-(.*)_run', f).group(1)
+    derivatives_path = re.search('(.*)fmriprep/sub', f).group(1)
+    con_regs = pd.read_csv(f, sep='\t')
+    aCompCor = ['a_comp_cor_00', 'a_comp_cor_01', 'a_comp_cor_02', 'a_comp_cor_03', 'a_comp_cor_04', 'a_comp_cor_05']
+    cosine = [col for col in con_regs if col.startswith('cosine')]
+    NSS = [col for col in con_regs if col.startswith('non_steady_state')]
+    motion = ['trans_x', 'trans_y', 'trans_z', 'rot_x', 'rot_y', 'rot_z']
+    fd = ['framewise_displacement']
+    filter_col = np.concatenate([cosine, NSS, motion, aCompCor, fd])
+    df_all = con_regs[filter_col]
+    df_all.fillna(0, inplace=True)
+
+    # Generate output files
+    outfile = "%s_task-%s_run-%s_desc-fslConfounds.tsv" % (sub, task, run)
+    outdir = derivatives_path + "fsl/confounds/%s/" % (sub)
+    if not os.path.exists(outdir):
+        os.makedirs(outdir)
+    output = outdir + outfile
+    print(sub, run, task)
+    df_all.to_csv(output, index=False, sep='\t', header=False)
+

@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+
+# Generating image quality metrics using MRIQC
+
+# Step1: run on single subject
+bids_root_dir=/mnt/data/project
+
+docker run -it --rm \
+    -v $bids_root_dir/BIDS:/base:ro \
+    -v $bids_root_dir/derivatives/mriqc/sub-001:/out \
+    -v $bids_root_dir/derivatives/mriqc/scratch:/scratch \
+    nipreps/mriqc:latest /base /out \
+    participant \
+    --participant_label sub-001 \
+    --no-sub \
+    -w /scratch
+
+# Step2: loop for group
+bids_root_dir=/mnt/data/project
+
+for sub in $(seq -w 002 077)
+do
+    if [ ! -d $bids_root_dir/derivatives/mriqc/sub-${sub} ]; then
+        mkdir $bids_root_dir/derivatives/mriqc/sub-${sub}
+    fi
+
+
+    echo ""
+    echo "Running MRIQC on participant ${sub}"
+    echo ""
+
+    docker run -it --rm \
+        -v $bids_root_dir/BIDS:/base:ro \
+        -v $bids_root_dir/derivatives/mriqc/sub-${sub}:/out \
+	-v $bids_root_dir/derivatives/mriqc/scratch:/scratch \
+        nipreps/mriqc:latest /base /out \
+        participant \
+        --participant_label sub-${sub} \
+        --no-sub \
+        -w /scratch
+done
+
+
+# Step5: run group level
+bids_root_dir=/mnt/data/project
+
+docker run -it --rm \
+    -v $bids_root_dir/BIDS:/base:ro \
+    -v $bids_root_dir/derivatives/mriqc:/out \
+    nipreps/mriqc:latest /base /out \
+    group
+

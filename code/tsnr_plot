@@ -1,0 +1,38 @@
+#!/usr/bin/env python
+
+# Script for ploting the average tSNR image of the task
+
+
+import nilearn.plotting as niplt
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+
+
+cmap = mpl.colors.LinearSegmentedColormap.from_list(
+    'blue_gradient', ['white', 'darkblue']
+)
+
+vmin, vmax = 0, 140
+
+TSNR = '/mnt/data/project/derivatives/tsnr/Mean-tsnr_task-CognitiveControl.nii.gz'
+
+# Plot image
+fig, ax = plt.subplots(figsize=(14, 8))
+niplt.plot_img(
+    TSNR,
+    cut_coords=(-10, -5, 0, 5, 10, 15, 20, 25),
+    display_mode='z',
+    title='Mean tSNR during the cognitive control task',
+    colorbar=True,
+    cmap=cmap,
+    vmin=vmin,
+    vmax=vmax,
+    axes=ax
+)
+
+# Save image
+output_path = '/mnt/data/project/derivatives/figure/Mean-tSNR_CognitiveControl.png'
+plt.savefig(output_path, dpi=300)
+
+plt.show()
+

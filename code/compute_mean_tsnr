@@ -1,0 +1,39 @@
+#!/usr/bin/env python
+
+# Script for calculating the average tSNR image of the task
+
+# Adapted from code available in the GitHub repository associated with the srndna-datapaper study (https://github.com/DVS-Lab/srndna-datapaper)
+
+import os
+import pandas as pd
+import numpy as np
+import nibabel as nib
+from nilearn.image import mean_img
+
+
+tsnr_dir = '/mnt/data/project/derivatives/tsnr/'
+
+tsnr_files = [os.path.join(tsnr_dir, f) for f in os.listdir(tsnr_dir) if f.endswith('_tsnr.nii.gz')]
+
+print("Found tSNR files:", tsnr_files)
+
+
+df = pd.DataFrame({
+    'img': tsnr_files
+})
+
+# Calculate mean tSNR
+for task in ['CognitiveControl', 'LanguageControl']:
+    img_list = df[df['img'].str.contains(f'_task-{task}_')]['img'].to_list()
+    mean_ts=[]
+    if img_list:
+        imgs = [nib.load(img) for img in img_list]
+        mean_ts = mean_img(imgs)
+        
+        # Save image
+        output_file = f'/mnt/data/project/derivatives/tsnr/Mean-tsnr_task-{task}.nii.gz'
+        nib.save(mean_ts, output_file)
+        print(f"Saved average tSNR image for task '{task}' to {output_file}")
+    else:
+        print(f"No tSNR files found for task '{task}'")
+

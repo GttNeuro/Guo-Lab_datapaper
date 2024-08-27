@@ -1,0 +1,36 @@
+#!/usr/bin/env python
+
+# Script for merging single-trial estimations into a 4D nii file for each participant
+
+
+# Adapted from code available in the GitHub repository associated with the srndna-datapaper study (https://github.com/DVS-Lab/srndna-datapaper)
+
+import os
+import nibabel as nib
+import re
+from natsort import natsorted
+from nilearn.image import concat_imgs  
+
+fsldir='/mnt/data/project/derivatives/fsl/'
+
+sub_list=[sub for sub in os.listdir(fsldir) if sub.startswith('sub') and '001' <= sub.split('-')[1] <= '077']
+
+for sub in sub_list:
+#    folders=[ds for ds in os.listdir(fsldir+sub) if ds.startswith('LSS-images_task-LanguageControl')]
+    folders=[ds for ds in os.listdir(fsldir+sub) if ds.startswith('LSS-images_task-CognitiveControl')]
+    print(folders)
+    for folder in folders:
+        d="%s%s/%s/"%(fsldir,sub,folder)
+        task=re.search('task-(.*)_run',d).group(1)
+        run=re.search('run-(.*)/',d).group(1)
+        zimages=natsorted([d+f for f in os.listdir(d) if f.startswith('zstat_trial')])
+        if any(zimages):
+            print(len(zimages))
+            X=concat_imgs(zimages)
+            print(d)
+            save_name='/mnt/data/project/derivatives/singletrial/%s/'%(sub)
+            if not os.path.isdir(save_name):
+                os.mkdir(save_name)
+            save_name=save_name+'%s_task-%s_run-%s_singletrial-Act.nii.gz'%(sub,task,run)
+            nib.save(X,save_name)
+
