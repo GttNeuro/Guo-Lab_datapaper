@@ -1,5 +1,5 @@
 # Guo-Lab_datapaper
-	This repository contains the final code for managing and processing the data. The data live on OpenNeuro (https://openneuro.org/datasets/XXX/) and is under consideration at XXX.
+	This repository contains the final code for managing and processing the dataset. The dataset lives on OpenNeuro (https://openneuro.org/datasets/ds005436/versions/1.0.2) and the submission of it is in progress.
  
 ## A few prerequisites and recommendations
 	Understand BIDS and be comfortable navigating Linux
